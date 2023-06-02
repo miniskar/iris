@@ -3,16 +3,16 @@
 #include "Command.h"
 #include "Task.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 Pool::Pool(Platform* platform) {
   platform_ = platform;
-#if BRISBANE_POOL_ENABLED
-  for (int i = 0; i < BRISBANE_POOL_MAX_TASK; i++) {
-    tasks_[i] = new Task(platform, BRISBANE_TASK, NULL);
+#if IRIS_POOL_ENABLED
+  for (int i = 0; i < IRIS_POOL_MAX_TASK; i++) {
+    tasks_[i] = new Task(platform, IRIS_TASK, NULL);
   }
-  for (int i = 0; i < BRISBANE_POOL_MAX_CMD; i++) {
+  for (int i = 0; i < IRIS_POOL_MAX_CMD; i++) {
     cmds_[i] = new Command();
   }
   tid_ = 0;
@@ -24,15 +24,16 @@ Pool::~Pool() {
 }
 
 Task* Pool::GetTask() {
-#if BRISBANE_POOL_ENABLED
+#if IRIS_POOL_ENABLED
   return tasks_[tid_++];
 #else
-  return new Task(platform_, BRISBANE_TASK, NULL);
+  const char *pool_tn = "Pool";
+  return new Task(platform_, IRIS_TASK, pool_tn);
 #endif
 }
 
 Command* Pool::GetCommand(Task* task, int type) {
-#if BRISBANE_POOL_ENABLED
+#if IRIS_POOL_ENABLED
   Command* cmd = cmds_[cid_++];
   cmd->Set(task, type);
   return cmd;
@@ -42,5 +43,5 @@ Command* Pool::GetCommand(Task* task, int type) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

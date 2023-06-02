@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <limits.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 PolicyAll::PolicyAll(Scheduler* scheduler) {
@@ -17,10 +17,13 @@ PolicyAll::~PolicyAll() {
 }
 
 void PolicyAll::GetDevices(Task* task, Device** devs, int* ndevs) {
-  for (int i = 0; i < ndevs_; i++) devs[i] = devs_[i];
-  *ndevs = ndevs_;
+  int n = 0;
+  for (int i = 0; i < ndevs_; i++) 
+      if (IsKernelSupported(task, devs_[i]))
+          devs[n++] = devs_[i];
+  *ndevs = n;
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

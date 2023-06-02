@@ -10,13 +10,14 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
-Profiler::Profiler(Platform* platform) {
+Profiler::Profiler(Platform* platform, const char *profiler_name) {
   platform_ = platform;
   fd_ = -1;
   msg_ = new Message();
+  strcpy(profiler_name_, profiler_name);
 }
 
 Profiler::~Profiler() {
@@ -24,26 +25,30 @@ Profiler::~Profiler() {
   if (msg_) delete msg_;
 }
 
-int Profiler::OpenFD() {
+int Profiler::OpenFD(const char *path) {
   time_t t = time(NULL);
-  char s[64];
-  strftime(s, 64, "%Y%m%d-%H%M%S", localtime(&t));
-  sprintf(path_, "%s-%s-%s.%s", platform_->app(), platform_->host(), s, FileExtension());
+  if (path != NULL) {
+      strcpy(path_, path);
+  } else {
+      char s[64];
+      strftime(s, 64, "%Y%m%d-%H%M%S", localtime(&t));
+      sprintf(path_, "%s-%s-%s.%s", platform_->app(), platform_->host(), s, FileExtension());
+  }
   fd_ = open(path_, O_CREAT | O_WRONLY, 0666);
   if (fd_ == -1) {
     _error("open profiler file[%s]", path_);
     perror("open");
-    return BRISBANE_ERR;
+    return IRIS_ERROR;
   }
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 int Profiler::Main() {
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 int Profiler::Exit() {
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 int Profiler::Write(const char* s, int tab) {
@@ -51,10 +56,10 @@ int Profiler::Write(const char* s, int tab) {
     Flush();
     if (!msg_->WriteString(s)) {
       _error("s[%s]", s);
-      return BRISBANE_ERR;
+      return IRIS_ERROR;
     }
   }
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 int Profiler::Flush() {
@@ -63,41 +68,49 @@ int Profiler::Flush() {
     if ((size_t) ssret != off) {
       _error("path[%s] ssret[%zd] off[%zu]", path_, ssret, off);
       perror("write");
-      return BRISBANE_ERR;
+      return IRIS_ERROR;
     }
     msg_->Clear();
-    return BRISBANE_OK;
+    return IRIS_SUCCESS;
 }
 
 int Profiler::CloseFD() {
   Flush();
   if (fd_ != -1) {
     int iret = close(fd_);
+    _info("Profiler %s output in file: %s", profiler_name_,  path_);
     if (iret == -1) {
       _error("close profiler file[%s]", path_);
       perror("close");
     }
   }
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 const char* Profiler::policy_str(int policy) {
   switch (policy) {
-    case brisbane_default:  return "default";
-    case brisbane_cpu:      return "cpu";
-    case brisbane_nvidia:   return "nvidia";
-    case brisbane_amd:      return "amd";
-    case brisbane_gpu:      return "gpu";
-    case brisbane_phi:      return "phi";
-    case brisbane_fpga:     return "fpga";
-    case brisbane_data:     return "data";
-    case brisbane_profile:  return "profile";
-    case brisbane_random:   return "random";
-    case brisbane_any:      return "any";
+    case iris_default:    return "default";
+    case iris_cpu:        return "cpu";
+    case iris_nvidia:     return "nvidia";
+    case iris_amd:        return "amd";
+    case iris_gpu_intel:  return "gpu intel";
+    case iris_gpu:        return "gpu";
+    case iris_phi:        return "phi";
+    case iris_fpga:       return "fpga";
+    case iris_dsp:        return "dsp";
+    case iris_roundrobin: return "roundrobin";
+    case iris_depend:     return "depend";
+    case iris_data:       return "data";
+    case iris_profile:    return "profile";
+    case iris_random:     return "random";
+    case iris_pending:    return "pending";
+    case iris_any:        return "any";
+    case iris_custom:     return "custom";
+    default: break;
   }
-  return policy & brisbane_all ? "all" : "?";
+  return policy & iris_all ? "all" : "?";
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

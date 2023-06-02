@@ -1,5 +1,7 @@
 #include "Policies.h"
 #include "Debug.h"
+#include "Platform.h"
+#include "Scheduler.h"
 #include "LoaderPolicy.h"
 #include "PolicyAll.h"
 #include "PolicyAny.h"
@@ -12,7 +14,7 @@
 #include "PolicyRoundRobin.h"
 #include "Platform.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 Policies::Policies(Scheduler* scheduler) {
@@ -43,30 +45,31 @@ Policies::~Policies() {
 }
 
 Policy* Policies::GetPolicy(int brs_policy, char* opt) {
-  if (brs_policy &  brisbane_roundrobin) return policy_roundrobin_;
-  if (brs_policy &  brisbane_cpu    ||
-      brs_policy &  brisbane_nvidia ||
-      brs_policy &  brisbane_amd    ||
-      brs_policy &  brisbane_gpu    ||
-      brs_policy &  brisbane_phi    ||
-      brs_policy &  brisbane_hexagon||
-      brs_policy &  brisbane_dsp    ||
-      brs_policy &  brisbane_fpga)    return policy_device_;
-  if (brs_policy == brisbane_all)     return policy_all_;
-  if (brs_policy == brisbane_any)     return policy_any_;
-  if (brs_policy == brisbane_data)    return policy_data_;
-  if (brs_policy == brisbane_depend)  return policy_depend_;
-  if (brs_policy == brisbane_default) return policy_default_;
-  if (brs_policy == brisbane_profile) return policy_profile_;
-  if (brs_policy == brisbane_random)  return policy_random_;
-  if (brs_policy == brisbane_custom) {
+  if (brs_policy &  iris_roundrobin) return policy_roundrobin_;
+  if (brs_policy &  iris_cpu    ||
+      brs_policy &  iris_nvidia ||
+      brs_policy &  iris_amd    ||
+      brs_policy &  iris_gpu    ||
+      brs_policy &  iris_phi    ||
+      brs_policy &  iris_hexagon||
+      brs_policy &  iris_dsp    ||
+      brs_policy &  iris_fpga)    return policy_device_;
+  if (brs_policy == iris_all)     return policy_all_;
+  if (brs_policy == iris_any)     return policy_any_;
+  if (brs_policy == iris_data)    return policy_data_;
+  if (brs_policy == iris_depend)  return policy_depend_;
+  if (brs_policy == iris_default) return policy_default_;
+  if (brs_policy == iris_profile) return policy_profile_;
+  if (brs_policy == iris_random)  return policy_random_;
+  if (brs_policy == iris_pending) return policy_data_;//to get to this point with the pending policy it can only be for D2H tranfers (so just default to data policy to minimize memory movement)
+  if (brs_policy == iris_custom) {
     if (policy_customs_.find(std::string(opt)) != policy_customs_.end()) {
       Policy* policy = policy_customs_[opt]->policy();
       policy->SetScheduler(scheduler_);
       return policy;
     }
   }
-  _error("unknown policy [%d] [0x%x] [%s]", brs_policy, brs_policy, opt);
+  _warning("unknown policy [%d] [0x%x] [%s]", brs_policy, brs_policy, opt);
   return policy_any_;
 }
 
@@ -74,19 +77,21 @@ int Policies::Register(const char* lib, const char* name, void* params) {
   LoaderPolicy* loader = new LoaderPolicy(lib, name);
   std::string namestr = std::string(name);
   if (policy_customs_.find(namestr) != policy_customs_.end()) {
+    scheduler_->platform()->IncrementErrorCount();
     _error("existing policy name[%s]", name);
-    return BRISBANE_ERR;
+    return IRIS_ERROR;
   }
-  if (loader->Load() != BRISBANE_OK) {
+  if (loader->Load() != IRIS_SUCCESS) {
+    scheduler_->platform()->IncrementErrorCount();
     _error("cannot load custom policy[%s]", name);
-    return BRISBANE_ERR;
+    return IRIS_ERROR;
   }
   loader->Init(params);
   _trace("lib[%s] name[%s]", lib, name);
   policy_customs_.insert(std::pair<std::string, LoaderPolicy*>(namestr, loader));
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

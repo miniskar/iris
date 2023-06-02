@@ -1,14 +1,15 @@
-#ifndef BRISBANE_SRC_RT_PROFILER_GOOGLE_CHARTS_H
-#define BRISBANE_SRC_RT_PROFILER_GOOGLE_CHARTS_H
+#ifndef IRIS_SRC_RT_PROFILER_GOOGLE_CHARTS_H
+#define IRIS_SRC_RT_PROFILER_GOOGLE_CHARTS_H
 
 #include "Profiler.h"
+#include "pthread.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class ProfilerGoogleCharts : public Profiler {
 public:
-  ProfilerGoogleCharts(Platform* platform);
+  ProfilerGoogleCharts(Platform* platform, bool kernel_profile=false);
   virtual ~ProfilerGoogleCharts();
 
   virtual int CompleteTask(Task* task);
@@ -16,15 +17,17 @@ public:
 protected:
   virtual int Main();
   virtual int Exit();
-  virtual const char* FileExtension() { return "html"; }
+  virtual const char* FileExtension() { if (kernel_profile_) return "kernel.html"; else return "html"; }
 
 private:
+  pthread_mutex_t   chart_lock_;
   double first_task_;
+  bool kernel_profile_;
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
 
-#endif /*BRISBANE_SRC_RT_PROFILER_GOOGLE_CHARTS_H */
+#endif /*IRIS_SRC_RT_PROFILER_GOOGLE_CHARTS_H */
 

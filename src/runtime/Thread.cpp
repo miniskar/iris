@@ -1,7 +1,7 @@
 #include "Thread.h"
 #include "Debug.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 Thread::Thread() {
@@ -30,7 +30,9 @@ void Thread::Stop() {
 }
 
 void Thread::Sleep() {
+  sleeping_ = true;
   sem_wait(&sem_);
+  sleeping_ = false;
 }
 
 void Thread::Invoke() {
@@ -43,5 +45,5 @@ void* Thread::ThreadFunc(void* argp) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

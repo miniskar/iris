@@ -6,21 +6,19 @@
 
 #define USE_MEMRANGE
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
-Mem::Mem(size_t size, Platform* platform) {
+Mem::Mem(size_t size, Platform* platform) : BaseMem(IRIS_MEM, platform->ndevs()) {
   size_ = size;
-  mode_ = brisbane_normal;
+  mode_ = iris_normal;
   expansion_ = 1;
   platform_ = platform;
-  ndevs_ = platform->ndevs();
   host_inter_ = NULL;
   mapped_host_ = NULL;
   for (int i = 0; i < ndevs_; i++) {
-    archs_[i] = NULL;
-    archs_off_[i] = NULL;
     archs_dev_[i] = platform->device(i);
+    archs_[i] = NULL;
   }
   pthread_mutex_init(&mutex_, NULL);
 }
@@ -31,12 +29,36 @@ Mem::~Mem() {
   }
   if (!host_inter_) free(host_inter_);
   pthread_mutex_destroy(&mutex_);
+  for (std::set<MemRange*>::iterator I = ranges_.begin(), E = ranges_.end(); I != E; ++I) {
+      MemRange *mr = *I;
+      delete mr;
+  }
 }
 
-void* Mem::arch(Device* dev) {
-  int devno = dev->devno();
-  if (archs_[devno] == NULL) dev->MemAlloc(archs_ + devno, expansion_ * size_);
+void** Mem::arch_ptr(int devno, void *host) {
+  arch(devno, host);
+  return &archs_[devno];
+}
+
+void** Mem::arch_ptr(Device *dev, void *host) {
+  arch(dev, host);
+  return &archs_[dev->devno()];
+}
+
+void* Mem::arch(int devno, void *host) {
+  if (archs_[devno] == NULL) {
+      Device *dev = archs_dev_[devno];
+      if (host == NULL || !dev->is_shared_memory_buffers()) 
+          dev->MemAlloc(archs_ + devno, expansion_ * size_);
+      else
+          archs_[devno] = host;
+  }
   return archs_[devno];
+}
+
+void* Mem::arch(Device* dev, void *host) {
+  int devno = dev->devno();
+  return arch(devno, host);
 }
 
 void* Mem::host_inter() {
@@ -165,10 +187,10 @@ void Mem::Reduce(int mode, int type) {
   mode_ = mode;
   type_ = type;
   switch (type_) {
-    case brisbane_int:      type_size_ = sizeof(int);       break;
-    case brisbane_long:     type_size_ = sizeof(long);      break;
-    case brisbane_float:    type_size_ = sizeof(float);     break;
-    case brisbane_double:   type_size_ = sizeof(double);    break;
+    case iris_int:      type_size_ = sizeof(int);       break;
+    case iris_long:     type_size_ = sizeof(long);      break;
+    case iris_float:    type_size_ = sizeof(float);     break;
+    case iris_double:   type_size_ = sizeof(double);    break;
     default: _error("not support type[0x%x]", type_);
   }
 }
@@ -183,5 +205,5 @@ void Mem::SetMap(void* host, size_t size) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

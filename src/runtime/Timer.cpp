@@ -1,11 +1,14 @@
 #include "Timer.h"
 #include <time.h>
-
-namespace brisbane {
+#include <cstdio>
+namespace iris {
 namespace rt {
 
+// this static variable initialization was done to make all device's start time same
+double Timer::boot_ = 0; // static varible intialization 
+
 Timer::Timer() {
-  for (int i = 0; i < BRISBANE_TIMER_MAX; i++) {
+  for (int i = 0; i < IRIS_TIMER_MAX; i++) {
     total_[i] = 0.0;
     total_ull_[i] = 0ULL;
   }
@@ -21,6 +24,12 @@ double Timer::Now() {
   struct timespec t;
   clock_gettime(CLOCK_REALTIME, &t);
   return t.tv_sec + 1.e-9 * t.tv_nsec - boot_;
+}
+
+double Timer::GetCurrentTime() {
+  struct timespec t;
+  clock_gettime(CLOCK_REALTIME, &t);
+  return t.tv_sec + 1.e-9 * t.tv_nsec;
 }
 
 size_t Timer::NowNS() {
@@ -55,4 +64,4 @@ size_t Timer::Inc(int i, size_t s) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */

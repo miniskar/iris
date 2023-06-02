@@ -1,51 +1,103 @@
 #include "QueueReady.h"
+#include "Task.h"
+#include <utility>
 
-namespace brisbane {
+using namespace std;
+namespace iris {
 namespace rt {
 
-QueueReady::QueueReady(unsigned long size) {
-  size_ = size;
-  idx_r_ = 0;
-  idx_w_ = 0;
-  idx_w_cas_ = 0;
-  elements_ = (volatile Task**)(new Task*[size_]);
+QueueReady::QueueReady() {
 }
 
 QueueReady::~QueueReady() {
-  delete[] elements_;
 }
 
-bool QueueReady::Enqueue(Task* task) {
-  while (true) {
-    unsigned long prev_idx_w = idx_w_cas_;
-    unsigned long next_idx_w = (prev_idx_w + 1) % this->size_;
-    if (next_idx_w == this->idx_r_) return false;
-    if (__sync_bool_compare_and_swap(&idx_w_cas_, prev_idx_w, next_idx_w)) {
-      this->elements_[prev_idx_w] = task;
-      while (!__sync_bool_compare_and_swap(&this->idx_w_, prev_idx_w, next_idx_w)) {}
-      break;
-    }
+bool QueueReady::Peek(Task** task, int target_index){
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (target_index <= (int)pqueue_.size()){
+    auto & data = pqueue_[target_index];
+    *task = data.second;
+  }
+  else{
+    target_index -= pqueue_.size();
+    auto & data = queue_[target_index];
+    *task = data.second;
   }
   return true;
 }
 
-bool QueueReady::Dequeue(Task** task) {
-  if (idx_r_ == idx_w_) return false;
-  unsigned long next_idx_r = (idx_r_ + 1) % size_;
-  *task = (Task*) elements_[idx_r_];
-  idx_r_ = next_idx_r;
+void QueueReady::Print(int devno) {
+  printf("Queue data: (%lu) devno:%d:%p --- ", pqueue_.size(), devno, this);
+  for(size_t i=0; i<pqueue_.size(); i++) {
+    printf("%lu:%p ", pqueue_[i].second->uid(), pqueue_[i].second);
+  }
+  printf("\n");
+}
+
+bool QueueReady::Enqueue(Task* task) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  //if the task to be enqueued is a memory transfer it should be prioritized
+  if (task->marker()) {
+    queue_.push_back(std::make_pair(task->uid(), task));
+    _trace("Pushed marker task:%lu:%s to queue pq:%lu q:%lu", task->uid(), task->name(), pqueue_.size(), queue_.size());
+  }
+  else if (task->ncmds_memcpy() == task->ncmds()) {
+    pqueue_.push_back(make_pair(task->uid(), task));
+    _trace("Pushed task:%lu:%s to pqueue pq:%lu q:%lu", task->uid(), task->name(), pqueue_.size(), queue_.size());
+  }
+  else{
+    queue_.push_back(make_pair(task->uid(), task));
+    _trace("Pushed task:%lu:%s to queue pq:%lu q:%lu", task->uid(), task->name(), pqueue_.size(), queue_.size());
+  }
   return true;
 }
 
+bool QueueReady::Dequeue(Task **task) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (!pqueue_.empty()){
+    auto &data = pqueue_.front();
+    *task = (Task*) data.second;
+    _trace("Popped task:%lu:%s to pqueue pq:%lu q:%lu", (*task)->uid(), (*task)->name(), pqueue_.size(), queue_.size());
+    pqueue_.pop_front();
+    return true;
+  }
+  if (!queue_.empty()){
+    auto &data = queue_.front();
+    *task = (Task*) data.second;
+    _trace("Popped task:%lu:%s to queue pq:%lu q:%lu", (*task)->uid(), (*task)->name(), pqueue_.size(), queue_.size());
+    queue_.pop_front();
+    return true;
+  }
+  return false;
+}
+bool QueueReady::Dequeue(pair<unsigned long, Task *> *task) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (!pqueue_.empty()){
+    auto &data = pqueue_.front();
+    *task = data; //(Task*) data.second;
+    _trace("Popped task:%lu:%s to pqueue pq:%lu q:%lu", data.second->uid(), data.second->name(), pqueue_.size(), queue_.size());
+    pqueue_.pop_front();
+    return true;
+  }
+  if (!queue_.empty()){
+    auto &data = queue_.front();
+    *task = data; //(Task*) data.second;
+    _trace("Popped task:%lu:%s to queue pq:%lu q:%lu", data.second->uid(), data.second->name(), pqueue_.size(), queue_.size());
+    queue_.pop_front();
+    return true;
+  }
+  return false;
+}
+
+
 size_t QueueReady::Size() {
-  if (idx_w_ >= idx_r_) return idx_w_ - idx_r_;
-  return size_ - idx_r_ + idx_w_;
+  return (size_t)(pqueue_.size() + queue_.size());
 }
 
 bool QueueReady::Empty() {
-  return Size() == 0UL;
+  return pqueue_.empty() && queue_.empty();
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

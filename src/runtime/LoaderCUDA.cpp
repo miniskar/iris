@@ -1,7 +1,7 @@
 #include "LoaderCUDA.h"
 #include "Debug.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 LoaderCUDA::LoaderCUDA() {
@@ -17,6 +17,12 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuDeviceGetAttribute);
   LOADFUNC(cuDeviceGetCount);
   LOADFUNC(cuDeviceGetName);
+  LOADFUNC(cuCtxGetCurrent);
+  LOADFUNC(cuCtxSetCurrent);
+  LOADFUNC(cuCtxEnablePeerAccess);
+  LOADFUNCEXT(cudaSetDevice);
+  LOADFUNCEXT(cudaDeviceCanAccessPeer);
+  LOADFUNCEXT(cudaDeviceEnablePeerAccess);
   LOADFUNCSYM(cuCtxCreate, cuCtxCreate_v2);
   LOADFUNC(cuCtxSynchronize);
   LOADFUNC(cuStreamAddCallback);
@@ -30,6 +36,16 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNC(cuTexRefSetFilterMode);
   LOADFUNC(cuTexRefSetFlags);
   LOADFUNC(cuTexRefSetFormat);
+  LOADFUNC(cuMemcpy2D);
+  //LOADFUNC(cuMemset);
+  LOADFUNC(cuMemcpyDtoD);
+  LOADFUNCEXT(cudaMalloc);
+  LOADFUNCEXT(cudaMemcpy);
+  LOADFUNCEXT(cudaMemcpy2D);
+  LOADFUNCEXT(cudaMemset);
+  LOADFUNCEXT(cudaHostRegister);
+  LOADFUNC(cuMemcpy2DUnaligned);
+  LOADFUNC(cuMemcpy2DAsync);
   LOADFUNCSYM(cuMemAlloc, cuMemAlloc_v2);
   LOADFUNCSYM(cuMemFree, cuMemFree_v2);
   LOADFUNCSYM(cuMemcpyHtoD, cuMemcpyHtoD_v2);
@@ -37,9 +53,9 @@ int LoaderCUDA::LoadFunctions() {
   LOADFUNCSYM(cuMemcpyDtoH, cuMemcpyDtoH_v2);
   LOADFUNCSYM(cuMemcpyDtoHAsync, cuMemcpyDtoHAsync);
   LOADFUNC(cuLaunchKernel);
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

@@ -1,7 +1,7 @@
 #include "LoaderHIP.h"
 #include "Debug.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 LoaderHIP::LoaderHIP() {
@@ -22,16 +22,25 @@ int LoaderHIP::LoadFunctions() {
   LOADFUNC(hipDeviceGet);
   LOADFUNC(hipDeviceGetName);
   LOADFUNC(hipCtxCreate);
+  LOADFUNC(hipCtxGetCurrent);
+  LOADFUNC(hipCtxSetCurrent);
   LOADFUNC(hipCtxSynchronize);
   LOADFUNC(hipModuleLoad);
   LOADFUNC(hipModuleGetFunction);
   LOADFUNC(hipMalloc);
+  LOADFUNC(hipHostRegister);
+  LOADFUNC(hipMemset);
   LOADFUNC(hipFree);
+  LOADFUNC(hipGetDeviceProperties);
+  LOADFUNC(hipDeviceCanAccessPeer);
+  LOADFUNC(hipDeviceEnablePeerAccess);
+  LOADFUNC(hipMemcpy2D);
+  LOADFUNC(hipMemcpyDtoD);
   LOADFUNC(hipMemcpyHtoD);
   LOADFUNC(hipMemcpyDtoH);
   LOADFUNC(hipModuleLaunchKernel);
   LOADFUNC(hipDeviceSynchronize);
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 void LoaderHIP::Lock() {
@@ -43,5 +52,5 @@ void LoaderHIP::Unlock() {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

@@ -1,9 +1,9 @@
-#ifndef BRISBANE_SRC_RT_WORKER_H
-#define BRISBANE_SRC_RT_WORKER_H
+#ifndef IRIS_SRC_RT_WORKER_H
+#define IRIS_SRC_RT_WORKER_H
 
 #include "Thread.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class Consistency;
@@ -25,7 +25,7 @@ public:
   bool busy() { return busy_; }
   unsigned long ntasks();
   Device* device() { return dev_; }
-
+  Platform* platform() { return platform_; }
 private:
   void Execute(Task* task);
   virtual void Run();
@@ -41,6 +41,6 @@ private:
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_WORKER_H */
+#endif /* IRIS_SRC_RT_WORKER_H */

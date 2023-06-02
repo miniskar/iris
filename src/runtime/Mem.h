@@ -1,18 +1,21 @@
-#ifndef BRISBANE_SRC_RT_MEM_H
-#define BRISBANE_SRC_RT_MEM_H
+#ifndef IRIS_SRC_RT_MEM_H
+#define IRIS_SRC_RT_MEM_H
 
 #include "Config.h"
 #include "Retainable.h"
+#include "BaseMem.h"
 #include "MemRange.h"
 #include <pthread.h>
 #include <set>
+#include <vector>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 class Platform;
+class Command;
 
-class Mem: public Retainable<struct _brisbane_mem, Mem> {
+class Mem: public BaseMem {
 public:
   Mem(size_t size, Platform* platform);
   virtual ~Mem();
@@ -29,7 +32,6 @@ public:
 
   void SetMap(void* host, size_t size);
 
-  size_t size() { return size_; }
   int mode() { return mode_; }
   int type() { return type_; }
   int type_size() { return type_size_; }
@@ -39,31 +41,26 @@ public:
   size_t mapped_size() { return mapped_size_; }
   bool mapped() { return mapped_host_ != NULL; }
 
-  void** archs() { return archs_; }
-  void* arch(Device* dev);
-  void** archs_off() { return archs_off_; }
+  void* arch(int devno, void *host=NULL);
+  void* arch(Device* dev, void *host=NULL);
+  void** arch_ptr(int devno, void *host=NULL);
+  void** arch_ptr(Device *dev, void *host=NULL);
 
-private:
-  size_t size_;
+protected:
   int mode_;
   Platform* platform_;
   std::set<MemRange*> ranges_;
   std::set<Device*> owners_;
   void* host_inter_;
-  int ndevs_;
   int type_;
   int type_size_;
   int expansion_;
   void* mapped_host_;
   size_t mapped_size_;
-  void* archs_[BRISBANE_MAX_NDEVS];
-  void* archs_off_[BRISBANE_MAX_NDEVS];
-  Device* archs_dev_[BRISBANE_MAX_NDEVS];
-
   pthread_mutex_t mutex_;
 };
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
-#endif /* BRISBANE_SRC_RT_MEM_H */
+#endif /* IRIS_SRC_RT_MEM_H */

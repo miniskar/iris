@@ -1,14 +1,25 @@
 #include "Policy.h"
+#include "Command.h"
+#include "Task.h"
 #include "Debug.h"
 #include "Scheduler.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 Policy::Policy() {
 }
 
 Policy::~Policy() {
+}
+
+bool Policy::IsKernelSupported(Task *task, Device *dev) {
+    Command *cmd = task->cmd_kernel();
+    if (cmd == NULL) return true;
+    Kernel *kernel = cmd->kernel();
+    if (kernel == NULL) return true;
+    if (kernel->isSupported(dev)) return true;
+    return false;
 }
 
 void Policy::SetScheduler(Scheduler* scheduler) {
@@ -18,5 +29,5 @@ void Policy::SetScheduler(Scheduler* scheduler) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 

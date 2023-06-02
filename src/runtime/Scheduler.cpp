@@ -12,7 +12,7 @@
 #include "Timer.h"
 #include "Worker.h"
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 Scheduler::Scheduler(Platform* platform) {
@@ -33,40 +33,46 @@ Scheduler::Scheduler(Platform* platform) {
 }
 
 Scheduler::~Scheduler() {
+  if (sleeping_) {
+    running_ = false;
+    Invoke();
+    while(running_);
+  }
   delete consistency_;
   delete policies_;
   delete hub_client_;
+  delete timer_;
   pthread_mutex_destroy(&mutex_);
 }
 
 void Scheduler::InitHubClient() {
-  hub_available_ = hub_client_->Init() == BRISBANE_OK;
+  hub_available_ = hub_client_->Init() == IRIS_SUCCESS;
 }
 
 void Scheduler::StartTask(Task* task, Worker* worker) {
-  task->set_time_start(timer_->Now());
+  //task->set_time_start(timer_->Now());
 }
 
 void Scheduler::CompleteTask(Task* task, Worker* worker) {
+  //task->set_time_end(timer_->Now());
   Device* dev = worker->device();
   int devno = dev->devno();
   if (hub_available_) hub_client_->TaskDec(devno, 1);
-  if (enable_profiler_ & !task->system()) {
-    task->set_time_end(timer_->Now());
-    pthread_mutex_lock(&mutex_);
-    _todo("remove lock profile[%d]", enable_profiler_);
-    for (int i = 0; i < nprofilers_; i++) profilers_[i]->CompleteTask(task); 
-    pthread_mutex_unlock(&mutex_);
-  }
+  //if (enable_profiler_ & !task->system()) {
+    //pthread_mutex_lock(&mutex_);
+    //_todo("remove lock profile[%d]", enable_profiler_);
+    //for (int i = 0; i < nprofilers_; i++) profilers_[i]->CompleteTask(task); 
+    //pthread_mutex_unlock(&mutex_);
+  //}
 }
 
 int Scheduler::RefreshNTasksOnDevs() {
   if (!hub_available_) {
     for (int i = 0; i < ndevs_; i++) ntasks_on_devs_[i] = workers_[i]->ntasks();
-    return BRISBANE_OK;
+    return IRIS_SUCCESS;
   }
   hub_client_->TaskAll(ntasks_on_devs_, ndevs_);
-  return BRISBANE_OK;
+  return IRIS_SUCCESS;
 }
 
 size_t Scheduler::NTasksOnDev(int i) {
@@ -80,8 +86,11 @@ void Scheduler::Enqueue(Task* task) {
 
 void Scheduler::Run() {
   while (true) {
+    _trace("Scheduler entering into sleep mode qsize:%lu", queue_->Size());
     Sleep();
+    _trace("Scheduler invoked qsize:%lu", queue_->Size());
     if (!running_) break;
+    _trace("Scheduler in running state qsize:%lu", queue_->Size());
     Task* task = NULL;
     while (queue_->Dequeue(&task)) Submit(task);
   }
@@ -93,16 +102,22 @@ void Scheduler::SubmitTaskDirect(Task* task, Device* dev) {
 }
 
 void Scheduler::Submit(Task* task) {
+  _trace("Dequeued task:%lu:%s", task->uid(), task->name());
   if (!ndevs_) {
-    if (!task->marker()) _error("%s", "no device");
+    if (!task->marker()) { 
+       _error("%s", "no device");
+       platform_->IncrementErrorCount();
+    }
     task->Complete();
     return;
   }
   if (task->marker()) {
+    _trace("Identified marker task:%lu:%s", task->uid(), task->name());
     std::vector<Task*>* subtasks = task->subtasks();
     for (std::vector<Task*>::iterator I = subtasks->begin(), E = subtasks->end(); I != E; ++I) {
       Task* subtask = *I;
       int dev = subtask->devno();
+      _trace("Enquing marker task:%lu:%s of subtask:%lu:%s to device", task->uid(), task->name(), subtask->uid(), subtask->name());
       workers_[dev]->Enqueue(subtask);
     }
     return;
@@ -120,8 +135,8 @@ void Scheduler::SubmitTask(Task* task) {
   int brs_policy = task->brs_policy();
   char* opt = task->opt();
   int ndevs = 0;
-  Device* devs[BRISBANE_MAX_NDEVS];
-  if (brs_policy < BRISBANE_MAX_NDEVS) {
+  Device* devs[IRIS_MAX_NDEVS];
+  if (brs_policy < IRIS_MAX_NDEVS) {
     if (brs_policy >= ndevs_) ndevs = 0;
     else {
       ndevs = 1;
@@ -134,6 +149,9 @@ void Scheduler::SubmitTask(Task* task) {
     ndevs = 1;
     devs[0] = devs_[dev_default];
   }
+  //if any dependencies were pending, time to process them now.
+  if (!task->Dispatchable()) task->DispatchDependencies();
+
   for (int i = 0; i < ndevs; i++) {
     devs[i]->worker()->Enqueue(task);
     if (hub_available_) hub_client_->TaskInc(devs[i]->devno(), 1);
@@ -141,4 +159,4 @@ void Scheduler::SubmitTask(Task* task) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */

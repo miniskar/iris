@@ -1,7 +1,8 @@
 option(BUILD_SHARED_LIBS "Build shared libs" ON)
 
-include_directories(${BRISBANE_INC_DIR})
-include_directories(${BRISBANE_BIN_DIR}/runtime)
+include_directories(${IRIS_INC_DIR})
+include_directories(${IRIS_BIN_DIR}/runtime)
+include_directories(${IRIS_BIN_DIR}/runtime/rapidjson)
 
 configure_file(Config.h.in Config.h)
 
@@ -11,9 +12,35 @@ if (CMAKE_VERSION VERSION_LESS "3.1")
 else()
   set(CMAKE_CXX_STANDARD 11)
 endif()
+if (COVERAGE)
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
+endif()
 
-set(BRISBANE_RUNTIME_SOURCES
+if (IRIS_ASYNC_STREAMING) 
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DIRIS_ASYNC_STREAMING")
+endif()
+
+if (ENABLE_SINGLE_DEVICE_PER_CU) 
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_SINGLE_DEVICE_PER_CU")
+endif()
+
+if (DISABLE_CONSISTENCY_CHECK) 
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDISABLE_CONSISTENCY_CHECK")
+endif()
+
+if (TRACE_DISABLE) 
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTRACE_DISABLE")
+endif()
+if (INFO_DISABLE) 
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DINFO_DISABLE")
+endif()
+if (DEBUG_DISABLE) 
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDEBUG_DISABLE")
+endif()
+
+set(IRIS_RUNTIME_SOURCES
   CAPI.cpp
+  IRIS.cpp
   Command.cpp
   Consistency.cpp
   Device.cpp
@@ -31,6 +58,9 @@ set(BRISBANE_RUNTIME_SOURCES
   Kernel.cpp
   Loader.cpp
   LoaderCUDA.cpp
+  LoaderHost2OpenCL.cpp
+  LoaderHost2HIP.cpp
+  LoaderHost2CUDA.cpp
   LoaderHexagon.cpp
   LoaderHIP.cpp
   LoaderLevelZero.cpp
@@ -38,6 +68,8 @@ set(BRISBANE_RUNTIME_SOURCES
   LoaderOpenMP.cpp
   LoaderPolicy.cpp
   Message.cpp
+  DataMemRegion.cpp
+  DataMem.cpp
   Mem.cpp
   MemRange.cpp
   Platform.cpp
@@ -63,6 +95,7 @@ set(BRISBANE_RUNTIME_SOURCES
   Reduction.cpp
   Retainable.cpp
   Scheduler.cpp
+  SchedulingHistory.cpp
   SigHandler.cpp
   Task.cpp
   Thread.cpp
@@ -70,7 +103,7 @@ set(BRISBANE_RUNTIME_SOURCES
   Utils.cpp
   Worker.cpp)
 
-set(BRISBANE_RUNTIME_HEADERS
+set(IRIS_RUNTIME_HEADERS
   Command.h
   Consistency.h
   Debug.h
@@ -78,15 +111,23 @@ set(BRISBANE_RUNTIME_HEADERS
   DeviceCUDA.h
   DeviceHexagon.h
   DeviceHIP.h
+  DeviceLevelZero.h
   DeviceOpenCL.h
   DeviceOpenMP.h
+  Filter.h
   FilterTaskSplit.h
   Graph.h
   History.h
   HubClient.h
+  Hub.h
+  jsmn.h
   JSON.h
   Kernel.h
   Loader.h
+  LoaderHost2OpenCL.h
+  LoaderLevelZero.h
+  LoaderHost2HIP.h
+  LoaderHost2CUDA.h
   LoaderCUDA.h
   LoaderHexagon.h
   LoaderHIP.h
@@ -94,9 +135,13 @@ set(BRISBANE_RUNTIME_HEADERS
   LoaderOpenMP.h
   LoaderPolicy.h
   Message.h
+  DataMemRegion.h
+  DataMem.h
+  BaseMem.h
   Mem.h
   MemRange.h
   Platform.h
+  ObjectTrack.h
   Policies.h
   Policy.h
   PolicyAll.h
@@ -104,8 +149,10 @@ set(BRISBANE_RUNTIME_HEADERS
   PolicyData.h
   PolicyDefault.h
   PolicyDevice.h
+  PolicyDepend.h
   PolicyProfile.h
   PolicyRandom.h
+  PolicyRoundRobin.h
   Polyhedral.h
   Pool.h
   PresentTable.h
@@ -117,6 +164,7 @@ set(BRISBANE_RUNTIME_HEADERS
   Reduction.h
   Retainable.h
   Scheduler.h
+  SchedulingHistory.h
   SigHandler.h
   Structs.h
   Task.h
@@ -128,8 +176,8 @@ set(BRISBANE_RUNTIME_HEADERS
 if(USE_FORTRAN)
   MESSAGE(STATUS "USE_FORTRAN")
   enable_language(Fortran)
-  list(APPEND BRISBANE_RUNTIME_SOURCES FortranAPI-IRIS.f90)
-  install(FILES ${BRISBANE_BIN_DIR}/runtime/iris.mod DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris)
+  list(APPEND IRIS_RUNTIME_SOURCES FortranAPI-IRIS.f90)
+  install(FILES ${IRIS_BIN_DIR}/runtime/iris.mod DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris)
 endif()
 
 if(USE_PYTHON)
@@ -137,14 +185,14 @@ if(USE_PYTHON)
   install(FILES iris.py DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris)
 endif()
 
-add_library(iris ${BRISBANE_RUNTIME_SOURCES})
+add_library(iris ${IRIS_RUNTIME_SOURCES})
 
 target_compile_options(iris PRIVATE -Wall)
 
 install(TARGETS iris DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 install(FILES
-  ${BRISBANE_RUNTIME_HEADERS}
-  ${BRISBANE_BIN_DIR}/runtime/Config.h
+  ${IRIS_RUNTIME_HEADERS}
+  ${IRIS_BIN_DIR}/runtime/Config.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iris/rt)
 

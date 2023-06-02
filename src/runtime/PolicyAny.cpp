@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <limits.h>
 
-namespace brisbane {
+namespace iris {
 namespace rt {
 
 PolicyAny::PolicyAny(Scheduler* scheduler) {
@@ -21,6 +21,7 @@ void PolicyAny::GetDevices(Task* task, Device** devs, int* ndevs) {
   int min_dev = 0;
   scheduler_->RefreshNTasksOnDevs();
   for (int i = 0; i < ndevs_; i++) {
+    if (!IsKernelSupported(task, devs_[i])) continue;
     unsigned long n = scheduler_->NTasksOnDev(i);
     if (n == 0) {
       min_dev = i;
@@ -36,5 +37,5 @@ void PolicyAny::GetDevices(Task* task, Device** devs, int* ndevs) {
 }
 
 } /* namespace rt */
-} /* namespace brisbane */
+} /* namespace iris */
 
